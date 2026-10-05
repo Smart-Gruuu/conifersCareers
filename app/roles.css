@@ -1,0 +1,467 @@
+/* ---------------------------------------------------------------------------
+ * Role listings, job detail pages and the application form.
+ *
+ * Not vendored - this is the one part of the site with no counterpart on
+ * conifers.ai. The declarations mirror the theme's own `.demo-form` form
+ * styling and are built from its custom properties, so the form reads as part
+ * of the same system without borrowing HubSpot's class names for a form that
+ * is not a HubSpot form.
+ * --------------------------------------------------------------------------- */
+
+/* --- Job detail --- */
+
+.job-detail {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
+  gap: clamp(32px, 5vw, 72px);
+  align-items: start;
+}
+
+.job-body > * + * {
+  margin-top: 18px;
+}
+
+.job-body h2 {
+  margin: 38px 0 0;
+  font-size: var(--fs-h3, 28px);
+  font-weight: var(--fw-semibold, 600);
+  line-height: var(--lh-snug, 1.2);
+  letter-spacing: var(--ls-title, -0.01em);
+  color: var(--c-main-green);
+}
+
+.job-body p,
+.job-body li {
+  font-size: var(--fs-body-lg, 17px);
+  line-height: var(--lh-relaxed, 1.65);
+  color: var(--neutral-l-11);
+}
+
+.job-body ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.job-body li {
+  position: relative;
+  padding-left: 26px;
+  margin-top: 10px;
+}
+
+.job-body li::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 11px;
+  width: 7px;
+  height: 7px;
+  background: var(--c-accent-green);
+  clip-path: polygon(0 0, 100% 0, 100% 70%, 70% 100%, 0 100%);
+}
+
+.job-meta-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 28px;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.job-meta-list div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.job-meta-list dt {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: var(--ls-tag, 0.06em);
+  text-transform: uppercase;
+  color: var(--neutral-l-11);
+}
+
+.job-meta-list dd {
+  margin: 0;
+  font-size: var(--fs-body, 16px);
+  font-weight: var(--fw-semibold, 600);
+  color: var(--c-main-green);
+}
+
+/* --- Application form --- */
+
+.apply-panel {
+  position: sticky;
+  top: 96px;
+  background: var(--neutral-l-1);
+  box-shadow: inset 0 0 0 1px var(--neutral-l-4);
+  padding: clamp(22px, 3vw, 32px);
+  clip-path: polygon(
+    0 0,
+    calc(100% - 18px) 0,
+    100% 18px,
+    100% 100%,
+    18px 100%,
+    0 calc(100% - 18px)
+  );
+}
+
+.apply-panel > h2 {
+  margin: 0 0 4px;
+  font-size: var(--fs-h4, 22px);
+  font-weight: var(--fw-semibold, 600);
+  color: var(--c-main-green);
+}
+
+.apply-panel > p {
+  margin: 0 0 22px;
+  font-size: var(--fs-body-sm, 14px);
+  color: var(--neutral-l-11);
+}
+
+.af-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.af-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.af-row--three {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.af-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.af-field label {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: var(--fw-semibold, 600);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-main-green);
+}
+
+.af-optional {
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--neutral-l-10);
+}
+
+.af-field input,
+.af-field select {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--font-sans);
+  font-size: 14.5px;
+  color: var(--c-main-green);
+  background: #fff;
+  border: 1px solid var(--neutral-l-4);
+  padding: 12px 14px;
+  outline: none;
+  transition:
+    border-color var(--dur-base, 0.2s),
+    box-shadow var(--dur-base, 0.2s);
+}
+
+.af-field input:focus,
+.af-field select:focus {
+  border-color: var(--c-main-green);
+  box-shadow: 0 0 0 3px #1a2c1914;
+}
+
+.af-field input[aria-invalid="true"],
+.af-field select[aria-invalid="true"] {
+  border-color: var(--orange-l-10);
+}
+
+.af-field input[type="file"] {
+  padding: 9px 10px;
+  font-size: 13px;
+  color: var(--neutral-l-11);
+}
+
+.af-field input[type="file"]::file-selector-button {
+  margin-right: 12px;
+  padding: 7px 12px;
+  border: none;
+  background: var(--green-l-3);
+  color: var(--c-main-green);
+  font: inherit;
+  font-weight: var(--fw-semibold, 600);
+  cursor: pointer;
+}
+
+.af-field select {
+  appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%231A2C19' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M6 9l6 6 6-6'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 34px;
+}
+
+.af-hint {
+  font-size: 12px;
+  color: var(--neutral-l-10);
+}
+
+.af-error {
+  font-size: 12px;
+  color: var(--orange-l-11);
+}
+
+.af-form-error {
+  margin: 0;
+  padding: 11px 14px;
+  background: var(--orange-l-3);
+  color: var(--orange-l-12);
+  font-size: var(--fs-body-sm, 14px);
+}
+
+.af-submit {
+  width: 100%;
+  justify-content: center;
+  margin-top: 6px;
+}
+
+.af-submit[disabled] {
+  opacity: 0.65;
+  cursor: progress;
+}
+
+.af-fine {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--neutral-l-10);
+}
+
+/* Honeypot - off-screen rather than display:none, which some bots detect. */
+.af-hp {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.af-done h3 {
+  margin: 0 0 8px;
+  font-size: var(--fs-h4, 22px);
+  font-weight: var(--fw-semibold, 600);
+  color: var(--c-main-green);
+}
+
+.af-done p {
+  margin: 0;
+  font-size: var(--fs-body, 16px);
+  line-height: var(--lh-relaxed, 1.65);
+  color: var(--neutral-l-11);
+}
+
+.af-warning {
+  margin-top: 14px !important;
+  padding: 11px 14px;
+  background: var(--orange-l-3);
+  color: var(--orange-l-12);
+  font-size: 13px !important;
+}
+
+@media (max-width: 960px) {
+  .job-detail {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .apply-panel {
+    position: static;
+  }
+}
+
+@media (max-width: 560px) {
+  .af-row,
+  .af-row--three {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* --- Greenhouse-authored posting bodies -------------------------------------
+ * Postings are written in the ATS, so the markup is whatever a recruiter
+ * produced (p / strong / ul / li / h4 / span in practice). These rules give
+ * that arbitrary HTML the same rhythm as a locally authored role body. */
+
+.job-body-html > * + * {
+  margin-top: 18px;
+}
+
+.job-body-html h2,
+.job-body-html h3,
+.job-body-html h4,
+.job-body-html h5 {
+  margin: 38px 0 0;
+  font-size: var(--fs-h4, 22px);
+  font-weight: var(--fw-semibold, 600);
+  line-height: var(--lh-snug, 1.2);
+  letter-spacing: var(--ls-title, -0.01em);
+  color: var(--c-main-green);
+}
+
+.job-body-html p,
+.job-body-html li {
+  font-size: var(--fs-body-lg, 17px);
+  line-height: var(--lh-relaxed, 1.65);
+  color: var(--neutral-l-11);
+}
+
+.job-body-html strong,
+.job-body-html b {
+  color: var(--c-main-green);
+  font-weight: var(--fw-semibold, 600);
+}
+
+.job-body-html ul,
+.job-body-html ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.job-body-html li {
+  position: relative;
+  padding-left: 26px;
+  margin-top: 10px;
+}
+
+.job-body-html li::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 11px;
+  width: 7px;
+  height: 7px;
+  background: var(--c-accent-green);
+  clip-path: polygon(0 0, 100% 0, 100% 70%, 70% 100%, 0 100%);
+}
+
+.job-body-html a {
+  color: var(--green-l-11);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Recruiters often leave empty paragraphs as spacers. */
+.job-body-html p:empty {
+  display: none;
+}
+
+/* --- Role hero -------------------------------------------------------------
+ * The theme's .hero-grid is a two-column layout (copy | visual). A job detail
+ * hero has no visual, so without this the title is confined to the first
+ * column - a little under half the page - and the theme's 24ch cap narrows it
+ * further. */
+
+.hero-grid--role {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.hero .hero-grid--role h1 {
+  max-width: none;
+}
+
+/* The careers hero caps its copy at a readable 760px measure for prose. A role
+   hero carries only the title and meta, so let it use the full width. */
+.hero--trust .hero-grid--role .hero-copy {
+  max-width: none;
+}
+
+/* --- "Actively hiring" style badge --- */
+
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 11px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: var(--fw-semibold, 600);
+  letter-spacing: var(--ls-tag, 0.06em);
+  text-transform: uppercase;
+  color: var(--green-l-12, #213c20);
+  background: var(--c-accent-green, #b6f5b1);
+  white-space: nowrap;
+  clip-path: polygon(
+    0 0,
+    calc(100% - 7px) 0,
+    100% 7px,
+    100% 100%,
+    7px 100%,
+    0 calc(100% - 7px)
+  );
+}
+
+.role-badge::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green-l-10, #365235);
+}
+
+/* Sits beside the department chip in the hero. */
+.role-eyebrow-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.role-eyebrow-row .eyebrow {
+  margin-bottom: 0;
+}
+
+.role-eyebrow-row {
+  margin-bottom: 20px;
+}
+
+/* On a board row the badge follows the title. */
+.job-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 11px;
+}
+
+.job-title-row .job-title {
+  margin: 0;
+}
+
+/* --- Overflow safety -------------------------------------------------------
+ * Posting bodies are pasted into the ATS from Word or Google Docs, which often
+ * replaces every space with a non-breaking space. Those give no line-break
+ * opportunity, so a paragraph becomes one unbreakable run that widens the page.
+ * sanitizeJobBody() normalises them; this is the belt-and-braces guard for the
+ * remaining cases - long URLs and the like. */
+
+.job-body,
+.job-body-html {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.job-body-html table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
