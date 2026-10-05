@@ -236,7 +236,11 @@ hook attributes — so the vendored CSS applies and the roles are in the HTML.
   `wp-json/conifers/v1/hellobar/track` endpoint is stripped, so a local replica
   does not beacon production analytics.
 - **Images and fonts** load from `www.conifers.ai` rather than being copied into
-  `public/`. Nothing renders if that host is unreachable or the paths move.
+  `public/`. Nothing renders if that host is unreachable or the paths move. The
+  favicon is the exception: `app/icon.png` (32px) and `app/apple-icon.png`
+  (256px) are copies of the live site's, held locally because a tab icon that
+  depends on a third-party host is the kind of thing that quietly stops working.
+  Next.js picks both up by filename convention and emits the `<link>` tags.
 - **Analytics and consent** (GTM, CookieYes) are not included.
 - **Outbound links** point back to `conifers.ai`, since the rest of the site is
   still WordPress. `/careers` is the exception and is served here.
