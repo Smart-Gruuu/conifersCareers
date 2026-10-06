@@ -20,23 +20,31 @@ const ACCEPT = ACCEPTED_DOC_EXTENSIONS.join(",");
 const MAX_MB = MAX_FILE_BYTES / 1024 / 1024;
 
 /**
- * The form posts straight to FormSubmit as an ordinary browser form submission
- * — action + method + enctype, no fetch.
+ * The form is submitted to FormSubmit by `fetch` from the browser, and the
+ * candidate never leaves this page — on success they see the confirmation
+ * below, and FormSubmit is never surfaced to them.
  *
- * That is deliberate. FormSubmit is built around real form posts from a
- * browser; the same payload sent server-side is not reliably processed, which
- * is why an earlier server-side version of this form never delivered.
+ * Two details make that possible:
+ *  - The request originates in the browser. FormSubmit is built around real
+ *    browser submissions; the same payload sent server-side is not reliably
+ *    processed, which is why an earlier server-relayed version never delivered.
+ *  - FormSubmit's file-capable endpoint answers with
+ *    `Access-Control-Allow-Origin: *`, so the response can be read and a
+ *    failure told apart from a success. (Its JSON `/ajax/` endpoint would be
+ *    tidier but accepts no file uploads, and a resume is required.)
  *
- * Consequences worth knowing:
- *  - The checks here are the only validation. There is no server route in front
- *    of FormSubmit any more, so they run in the browser only.
- *  - Spam control is FormSubmit's reCAPTCHA plus the `_honey` honeypot below.
- *  - `_next` returns the candidate to our own thank-you page rather than
- *    leaving them on FormSubmit's.
+ * The `action`/`method`/`encType` attributes remain as a no-JavaScript
+ * fallback: the markup is server-rendered, so without JS the browser can still
+ * post the form natively, and `_next` returns it to our own thank-you page.
+ *
+ * Validation here is the only validation — there is no server route in front of
+ * FormSubmit. Spam control is FormSubmit's own filtering plus the `_honey`
+ * honeypot below.
  */
 export function ApplyForm({ slug, title }: { slug: string; title: string }) {
   const [errors, setErrors] = useState<ApplicationErrors>({});
   const [submitting, setSubmitting] = useState(false);
+  const [sent, setSent] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
   // `_next` needs an absolute URL, which is only known in the browser, so it is
@@ -52,8 +60,13 @@ export function ApplyForm({ slug, title }: { slug: string; title: string }) {
     );
   }, [title]);
 
-  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    const data = new FormData(e.currentTarget);
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    // Always handled here; the native post is only the no-JavaScript path.
+    e.preventDefault();
+    if (submitting) return;
+
+    const form = e.currentTarget;
+    const data = new FormData(form);
 
     const fileOf = (name: string) => {
       const v = data.get(name);
@@ -66,7 +79,6 @@ export function ApplyForm({ slug, title }: { slug: string; title: string }) {
     });
 
     if (Object.keys(found).length > 0) {
-      e.preventDefault();
       setErrors(found);
       formRef.current
         ?.querySelector<HTMLElement>("[aria-invalid='true']")
@@ -76,7 +88,48 @@ export function ApplyForm({ slug, title }: { slug: string; title: string }) {
 
     setErrors({});
     setSubmitting(true);
-    // Not prevented: the browser now posts the form to FormSubmit.
+
+    // Only meaningful for the no-JS path; nothing should redirect here.
+    data.delete("_next");
+
+    try {
+      const res = await fetch(`https://formsubmit.co/${CAREERS_EMAIL}`, {
+        method: "POST",
+        body: data,
+      });
+      const text = await res.text().catch(() => "");
+
+      if (!res.ok) {
+        throw new Error(`FormSubmit responded ${res.status}`);
+      }
+
+      // Before the destination address is activated, FormSubmit accepts the
+      // request but delivers nothing. Treat that as a failure rather than
+      // telling the candidate their application is on its way.
+      if (/confirm your email|activat/i.test(text) && !/thank/i.test(text)) {
+        throw new Error("FormSubmit address is not activated yet");
+      }
+
+      setSent(true);
+    } catch (err) {
+      console.error("Application submission failed", err);
+      setErrors({
+        form: "Sorry — we couldn't submit your application just now. Please try again, or email us directly.",
+      });
+      setSubmitting(false);
+    }
+  }
+
+  if (sent) {
+    return (
+      <div className="af-done" role="status">
+        <h3>Application submitted successfully.</h3>
+        <p>
+          Thanks for applying for <strong>{title}</strong>. Our team will review
+          your application and contact you soon.
+        </p>
+      </div>
+    );
   }
 
   return (

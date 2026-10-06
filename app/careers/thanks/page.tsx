@@ -12,9 +12,12 @@ export const metadata: Metadata = {
 };
 
 /**
- * Where FormSubmit sends the candidate after a successful submission (the
- * `_next` field on the application form). Without it they would land on
- * FormSubmit's own branded "thank you" page.
+ * The no-JavaScript fallback landing page.
+ *
+ * With JavaScript the form never leaves the role page — it posts by fetch and
+ * shows its confirmation inline. This page only comes into play if the browser
+ * posts the form natively, and exists so that path lands somewhere of ours
+ * rather than on FormSubmit's own branded "thank you" page.
  */
 export default async function ThanksPage({
   searchParams,
@@ -29,18 +32,16 @@ export default async function ThanksPage({
         <div className="wrap hero-grid hero-grid--role">
           <div className="hero-copy">
             <p className="eyebrow on-light">Careers</p>
-            <h1>Application received.</h1>
+            <h1>Application submitted successfully.</h1>
             <p className="lead">
               {role ? (
                 <>
-                  Thanks for applying for <strong>{role}</strong>. We&rsquo;ve
-                  got your details and your resume.
+                  Thanks for applying for <strong>{role}</strong>.
                 </>
               ) : (
-                <>Thanks for applying. We&rsquo;ve got your details and your resume.</>
+                <>Thanks for applying.</>
               )}{" "}
-              If there&rsquo;s a fit, someone from the team will be in touch by
-              email.
+              Our team will review your application and contact you soon.
             </p>
             <div className="cta-row">
               <a href="/careers" className="btn btn-primary btn-lg chamfer">

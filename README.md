@@ -155,14 +155,22 @@ The application body is never logged; only failures are, without field values.
 
 ### Delivery
 
-The application form posts **directly to FormSubmit from the browser** — a plain
-`action` / `method` / `encType` form submission, no `fetch`, no API route.
+The application form is submitted to FormSubmit by `fetch` **from the browser**,
+and the candidate never leaves the role page: on success the form is replaced
+with an inline confirmation. FormSubmit is never surfaced to them — no redirect
+to its branded "thank you" page, no "return to the original site" link.
 
-That shape is load-bearing. An earlier version of this form validated and
-relayed the submission server-side, which looked tidier and never delivered:
-FormSubmit is built around real form posts from a browser, and the same payload
-sent server-to-server is not reliably processed. If you are tempted to move this
-back behind a route, that is the reason not to.
+Two details make that possible:
+
+- **The request originates in the browser.** FormSubmit is built around real
+  browser submissions; the same payload sent server-side is not reliably
+  processed, which is why an earlier server-relayed version never delivered. If
+  you are tempted to move this back behind an API route, that is the reason not
+  to.
+- **The file-capable endpoint sends `Access-Control-Allow-Origin: *`**, so the
+  response can be read and a failure told apart from a success. FormSubmit's
+  JSON `/ajax/` endpoint would be tidier but accepts no file uploads, and a
+  resume is required.
 
 The destination is `CAREERS_EMAIL` in [lib/company.ts](lib/company.ts), the same
 constant used for the mailto links on the site.
@@ -173,19 +181,26 @@ What the form sends, beyond the fields themselves:
 | --- | --- |
 | `_subject` | Email subject, including the role title |
 | `_template` | `table`, so the email is readable |
-| `_next` | Returns the candidate to `/careers/thanks` instead of FormSubmit's page |
 | `_honey` | Honeypot; a filled value is discarded silently |
 | `Role`, `Role ID` | Which posting the application is for |
+| `_next` | Stripped before the fetch; only used by the no-JS fallback |
 
 Field `name` attributes are human-readable ("First name", "Race / ethnicity")
 because FormSubmit uses them as the row labels of the email. The email field is
 named literally `email`, which is what FormSubmit looks for to set Reply-To, so
 replying to the notification reaches the candidate.
 
-`_next` is held in React state rather than written onto the input through a ref:
-React resets an uncontrolled input to its `defaultValue` on re-render, which
-silently blanked the field as soon as a failed validation attempt re-rendered
-the form, sending candidates to FormSubmit's page instead of ours.
+A failure — a non-OK status, a network error, or the pre-activation response —
+leaves the form in place with a retry message rather than claiming the
+application was sent.
+
+#### No-JavaScript fallback
+
+The `action`/`method`/`encType` attributes remain on the form. The markup is
+server-rendered, so without JavaScript the browser can still post natively, and
+`_next` lands that path on [/careers/thanks](app/careers/thanks/page.tsx) rather
+than on FormSubmit's page. With JavaScript the submit handler always calls
+`preventDefault`, so this path is never taken.
 
 #### What posting from the browser costs
 
