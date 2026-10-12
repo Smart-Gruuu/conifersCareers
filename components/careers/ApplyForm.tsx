@@ -1,6 +1,6 @@
 "use client";
 
-import { cloneElement, useEffect, useRef, useState } from "react";
+import { cloneElement, useRef, useState } from "react";
 import {
   ACCEPTED_DOC_EXTENSIONS,
   COVER_LETTER_FIELD,
@@ -14,32 +14,23 @@ import {
   validateApplication,
   type ApplicationErrors,
 } from "@/lib/application";
-import { CAREERS_EMAIL } from "@/lib/company";
 
 const ACCEPT = ACCEPTED_DOC_EXTENSIONS.join(",");
 const MAX_MB = MAX_FILE_BYTES / 1024 / 1024;
 
 /**
- * The form is submitted to FormSubmit by `fetch` from the browser, and the
- * candidate never leaves this page — on success they see the confirmation
- * below, and FormSubmit is never surfaced to them.
+ * The form posts to our own `/api/apply` route, which validates again on the
+ * server and sends the application through Brevo's transactional email API.
  *
- * Two details make that possible:
- *  - The request originates in the browser. FormSubmit is built around real
- *    browser submissions; the same payload sent server-side is not reliably
- *    processed, which is why an earlier server-relayed version never delivered.
- *  - FormSubmit's file-capable endpoint answers with
- *    `Access-Control-Allow-Origin: *`, so the response can be read and a
- *    failure told apart from a success. (Its JSON `/ajax/` endpoint would be
- *    tidier but accepts no file uploads, and a resume is required.)
+ * This replaced a FormSubmit integration that could not be made to work: it
+ * requires a manual activation click before delivering anything, and on
+ * localhost it reports "submitted successfully" while sending nothing — so
+ * development looked fine and no email ever arrived. Going through our own
+ * route means the same code path on localhost and in production, real status
+ * codes, and genuine errors instead of a false success.
  *
- * The `action`/`method`/`encType` attributes remain as a no-JavaScript
- * fallback: the markup is server-rendered, so without JS the browser can still
- * post the form natively, and `_next` returns it to our own thank-you page.
- *
- * Validation here is the only validation — there is no server route in front of
- * FormSubmit. Spam control is FormSubmit's own filtering plus the `_honey`
- * honeypot below.
+ * The candidate never leaves the page: on success the form is replaced by the
+ * confirmation below.
  */
 export function ApplyForm({ slug, title }: { slug: string; title: string }) {
   const [errors, setErrors] = useState<ApplicationErrors>({});
@@ -47,26 +38,11 @@ export function ApplyForm({ slug, title }: { slug: string; title: string }) {
   const [sent, setSent] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
-  // `_next` needs an absolute URL, which is only known in the browser, so it is
-  // filled in after mount — that also keeps the server and client markup
-  // identical on first render. It has to live in state rather than be written
-  // onto the input imperatively: React resets an uncontrolled input to its
-  // defaultValue on re-render, which silently blanked this field as soon as a
-  // failed validation attempt re-rendered the form.
-  const [nextUrl, setNextUrl] = useState("");
-  useEffect(() => {
-    setNextUrl(
-      `${window.location.origin}/careers/thanks?role=${encodeURIComponent(title)}`,
-    );
-  }, [title]);
-
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    // Always handled here; the native post is only the no-JavaScript path.
     e.preventDefault();
     if (submitting) return;
 
-    const form = e.currentTarget;
-    const data = new FormData(form);
+    const data = new FormData(e.currentTarget);
 
     const fileOf = (name: string) => {
       const v = data.get(name);
@@ -89,32 +65,29 @@ export function ApplyForm({ slug, title }: { slug: string; title: string }) {
     setErrors({});
     setSubmitting(true);
 
-    // Only meaningful for the no-JS path; nothing should redirect here.
-    data.delete("_next");
-
     try {
-      const res = await fetch(`https://formsubmit.co/${CAREERS_EMAIL}`, {
-        method: "POST",
-        body: data,
-      });
-      const text = await res.text().catch(() => "");
+      const res = await fetch("/api/apply", { method: "POST", body: data });
+      const payload = (await res.json()) as {
+        ok: boolean;
+        errors?: ApplicationErrors;
+        warning?: string;
+      };
 
-      if (!res.ok) {
-        throw new Error(`FormSubmit responded ${res.status}`);
-      }
-
-      // Before the destination address is activated, FormSubmit accepts the
-      // request but delivers nothing. Treat that as a failure rather than
-      // telling the candidate their application is on its way.
-      if (/confirm your email|activat/i.test(text) && !/thank/i.test(text)) {
-        throw new Error("FormSubmit address is not activated yet");
+      if (!payload.ok) {
+        // Shown only in development, to name the actual cause.
+        if (payload.warning) console.warn("Application not sent:", payload.warning);
+        setErrors(payload.errors ?? { form: "Something went wrong. Please try again." });
+        setSubmitting(false);
+        formRef.current
+          ?.querySelector<HTMLElement>("[aria-invalid='true'], .af-form-error")
+          ?.scrollIntoView({ block: "center" });
+        return;
       }
 
       setSent(true);
-    } catch (err) {
-      console.error("Application submission failed", err);
+    } catch {
       setErrors({
-        form: "Sorry — we couldn't submit your application just now. Please try again, or email us directly.",
+        form: "Network error. Please check your connection and try again.",
       });
       setSubmitting(false);
     }
@@ -133,26 +106,14 @@ export function ApplyForm({ slug, title }: { slug: string; title: string }) {
   }
 
   return (
-    <form
-      ref={formRef}
-      className="af-form"
-      action={`https://formsubmit.co/${CAREERS_EMAIL}`}
-      method="POST"
-      encType="multipart/form-data"
-      onSubmit={onSubmit}
-      noValidate
-    >
-      {/* FormSubmit controls. */}
-      <input type="hidden" name="_subject" value={`Application — ${title}`} />
-      <input type="hidden" name="_template" value="table" />
-      <input type="hidden" name="_next" value={nextUrl} readOnly />
-      <input type="hidden" name="Role" value={title} />
-      <input type="hidden" name="Role ID" value={slug} />
+    <form ref={formRef} className="af-form" onSubmit={onSubmit} noValidate>
+      <input type="hidden" name="role" value={slug} />
 
-      {/* FormSubmit's own honeypot: a filled value is silently discarded. */}
+      {/* Honeypot: hidden from people, attractive to bots. The server treats a
+          filled value as spam and silently discards the submission. */}
       <div className="af-hp" aria-hidden="true">
-        <label htmlFor="af-honey">Leave this empty</label>
-        <input id="af-honey" type="text" name="_honey" tabIndex={-1} autoComplete="off" />
+        <label htmlFor="af-company">Company</label>
+        <input id="af-company" type="text" name="company" tabIndex={-1} autoComplete="off" />
       </div>
 
       {errors.form && (

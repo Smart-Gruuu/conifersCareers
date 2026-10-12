@@ -53,9 +53,8 @@ export const ACCEPTED_DOC_TYPES = [
 export const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB per file
 
 /**
- * FormSubmit rejects submissions whose attachments exceed 10MB in total, so
- * cap below that — two files at the per-file limit would otherwise land exactly
- * on the ceiling.
+ * Combined attachment ceiling. Brevo allows 25MB per message; this is lower on
+ * purpose, because the whole upload is buffered in memory in the API route.
  */
 export const MAX_TOTAL_BYTES = 9 * 1024 * 1024;
 
@@ -232,10 +231,9 @@ export const EMPTY_FIELDS: ApplicationFields = {
 /**
  * The `name` attribute used for each field in the submitted form.
  *
- * FormSubmit labels each row of the notification email with the field's name,
- * so these are written for a human reading the email rather than for code. The
- * email field keeps the literal name "email" because that is what FormSubmit
- * looks for to populate Reply-To.
+ * These double as the row labels of the notification email, so they are
+ * written for a human reading that email rather than for code. The browser and
+ * the API route both key off this map, so a field's wire name is defined once.
  */
 export const FIELD_NAMES: Record<keyof ApplicationFields, string> = {
   firstName: "First name",

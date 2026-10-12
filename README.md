@@ -17,9 +17,8 @@ npm run typecheck
 | `/careers/<slug>` | Detail page + application form for every open role |
 | `/api/apply` | Receives an application and emails it to the company |
 
-Applications are emailed to `hello@conifers.work` via FormSubmit. There is no
-configuration and no `.env` file — the only setup is a one-time activation
-click on the destination address; see below.
+Applications are emailed to `hello@conifers.work` through Brevo. One setup
+step: a free Brevo API key in `.env.local` — see `.env.example`.
 
 ## How the replicas work
 
@@ -155,75 +154,53 @@ The application body is never logged; only failures are, without field values.
 
 ### Delivery
 
-The application form is submitted to FormSubmit by `fetch` **from the browser**,
-and the candidate never leaves the role page: on success the form is replaced
-with an inline confirmation. FormSubmit is never surfaced to them — no redirect
-to its branded "thank you" page, no "return to the original site" link.
+The form posts to our own `/api/apply` route, which re-validates on the server
+and sends the application through **Brevo's transactional email API** with the
+resume and cover letter as real attachments. The candidate never leaves the
+page; on success the form is replaced by an inline confirmation.
 
-Two details make that possible:
+Setup is one value: `BREVO_API_KEY` in `.env.local`, plus turning off Brevo's
+IP blocking (Security → Authorised IPs → "Block unknown IP addresses"). Brevo
+learns the IPs an API key calls from and then starts rejecting unknown ones —
+which breaks both a developer on a changing home IP and any serverless host,
+where the outbound address is dynamic. Keep the allowlist only if you deploy
+behind a static IP. A rejection surfaces in development with the exact fix. Brevo's free tier is 300
+emails/day with attachments up to 25MB, which a careers page will not trouble.
+The destination is `CAREERS_EMAIL` in [lib/company.ts](lib/company.ts), the
+same constant used for the site's mailto links; `APPLICATIONS_TO` overrides it
+for staging. `replyTo` is the candidate, so replying from the inbox reaches
+them.
 
-- **The request originates in the browser.** FormSubmit is built around real
-  browser submissions; the same payload sent server-side is not reliably
-  processed, which is why an earlier server-relayed version never delivered. If
-  you are tempted to move this back behind an API route, that is the reason not
-  to.
-- **The file-capable endpoint sends `Access-Control-Allow-Origin: *`**, so the
-  response can be read and a failure told apart from a success. FormSubmit's
-  JSON `/ajax/` endpoint would be tidier but accepts no file uploads, and a
-  resume is required.
+#### Why not a form-to-email service
 
-The destination is `CAREERS_EMAIL` in [lib/company.ts](lib/company.ts), the same
-constant used for the mailto links on the site.
+This went through FormSubmit first and it could not be made to work. Two
+reasons, both worth recording so nobody tries it again:
 
-What the form sends, beyond the fields themselves:
+- It requires a manual "Activate Form" click on the destination address before
+  it will deliver anything.
+- **On localhost it answers `"Thanks! The form was submitted successfully"`
+  while delivering nothing.** Development looked healthy and no email ever
+  arrived. Posting the same payload from a real domain returned *"This form
+  needs Activation"* — which is how the real state was finally established.
 
-| Field | Purpose |
-| --- | --- |
-| `_subject` | Email subject, including the role title |
-| `_template` | `table`, so the email is readable |
-| `_honey` | Honeypot; a filled value is discarded silently |
-| `Role`, `Role ID` | Which posting the application is for |
-| `_next` | Stripped before the fetch; only used by the no-JS fallback |
+Web3Forms was the obvious alternative but puts file attachments behind its paid
+plan, and resumes are the entire point. Resend requires DNS domain
+verification. Brevo needs only a verified sender and an API key, and being a
+real email API it behaves identically on localhost and in production, returns
+proper status codes, and fails loudly.
 
-Field `name` attributes are human-readable ("First name", "Race / ethnicity")
-because FormSubmit uses them as the row labels of the email. The email field is
-named literally `email`, which is what FormSubmit looks for to set Reply-To, so
-replying to the notification reaches the candidate.
+#### Failure handling
 
-A failure — a non-OK status, a network error, or the pre-activation response —
-leaves the form in place with a retry message rather than claiming the
-application was sent.
+A missing key, an unreachable service or a non-2xx response all leave the form
+in place with a retry message — never a false success. In development the
+response also carries a `warning` naming the real cause (for example
+`Email service responded 401. {"message":"Key not found"}`), which is logged to
+the console and never shown to a candidate.
 
-#### No-JavaScript fallback
-
-The `action`/`method`/`encType` attributes remain on the form. The markup is
-server-rendered, so without JavaScript the browser can still post natively, and
-`_next` lands that path on [/careers/thanks](app/careers/thanks/page.tsx) rather
-than on FormSubmit's page. With JavaScript the submit handler always calls
-`preventDefault`, so this path is never taken.
-
-#### What posting from the browser costs
-
-Validation in [lib/application.ts](lib/application.ts) now runs **in the browser
-only** — there is no server in front of FormSubmit to re-check it. Spam control
-is FormSubmit's reCAPTCHA plus the honeypot. FormSubmit caps attachments at 10MB
-combined, so the form rejects anything over 9MB total on top of the 5MB
-per-file limit.
-
-#### One-time activation
-
-The first application sent to a given address makes FormSubmit email that
-address a confirmation; **nothing is delivered until its link is clicked**, and
-the submitter lands on a FormSubmit "confirm your email" page instead of the
-thank-you page. This is the most likely reason for an application appearing to
-vanish.
-
-#### Applications pass through a third party
-
-Resumes and the personal details on the form transit FormSubmit's servers, which
-retain submission data for 30 days (uploaded files are not retained). That is
-the trade-off for having no credentials to manage, and worth a deliberate
-decision given the data involved.
+Validation runs on **both** sides: in the browser for responsiveness, and again
+in the route, which is the one that counts. Spam control is a server-checked
+honeypot plus a per-IP throttle of 5 submissions an hour (in-memory, so
+best-effort).
 
 ## Open roles
 
